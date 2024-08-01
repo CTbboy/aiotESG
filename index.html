@@ -1,0 +1,260 @@
+<html><head><base href="https://websimcreationengine.ai/formula1-linear-regression-demo/" />
+<title>Formula 1 Linear Regression Simulator</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Titillium Web', sans-serif;
+    line-height: 1.6;
+    padding: 0;
+    margin: 0;
+    background-color: #15151E;
+    color: #FFFFFF;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    background-color: #E10600;
+    padding: 20px;
+    text-align: center;
+  }
+  h1 {
+    color: #FFFFFF;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .container {
+    display: flex;
+    flex-grow: 1;
+    padding: 20px;
+  }
+  .controls {
+    flex: 0 0 300px;
+    padding: 20px;
+    background-color: #1F1F27;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-right: 20px;
+  }
+  .control-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 300;
+    color: #FFFFFF;
+    text-transform: uppercase;
+  }
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 8px;
+    border-radius: 4px;
+    background: #3A3A45;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  input[type="range"]:hover {
+    opacity: 1;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #E10600;
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #E10600;
+    cursor: pointer;
+  }
+  .main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  #plot {
+    flex-grow: 1;
+    background-color: #1F1F27;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    min-height: 500px;
+  }
+  #stats {
+    background-color: #1F1F27;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  #stats h3 {
+    color: #E10600;
+    margin-top: 0;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  #stats p {
+    margin: 10px 0;
+    font-weight: 300;
+  }
+  #stats span {
+    font-weight: 400;
+    color: #00D2BE;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Formula 1 Linear Regression Simulator</h1>
+  </div>
+  
+  <div class="container">
+    <div class="controls">
+      <div class="control-group">
+        <label for="slope">Acceleration (a): <span id="slopeValue">1.00</span></label>
+        <input type="range" id="slope" min="-50" max="50" value="1" step="0.1">
+      </div>
+      <div class="control-group">
+        <label for="points">Number of Laps (n): <span id="pointsValue">500</span></label>
+        <input type="range" id="points" min="100" max="1000" value="500" step="10">
+      </div>
+      <div class="control-group">
+        <label for="noise">Track Variability (c): <span id="noiseValue">20.0</span></label>
+        <input type="range" id="noise" min="10" max="100" value="20" step="1">
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div id="plot"></div>
+
+      <div id="stats">
+        <h3>Race Statistics:</h3>
+        <p>True Acceleration (a): <span id="trueSlope"></span></p>
+        <p>Base Speed (b): <span id="trueIntercept"></span></p>
+        <p>Number of Laps (n): <span id="numPoints"></span></p>
+        <p>Track Variability (c): <span id="noiseFactor"></span></p>
+        <p>Estimated Acceleration: <span id="estimatedSlope"></span></p>
+        <p>Estimated Base Speed: <span id="estimatedIntercept"></span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const b = 5; // Fixed base speed
+
+    function generateData(a, b, n, c) {
+      const x = Array.from({length: n}, () => Math.random() * 20 - 10);
+      const y = x.map(xi => a * xi + b + c * randn());
+      return [x, y];
+    }
+
+    function randn() {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+    }
+
+    function linearRegression(x, y) {
+      const n = x.length;
+      let sum_x = 0;
+      let sum_y = 0;
+      let sum_xy = 0;
+      let sum_xx = 0;
+
+      for (let i = 0; i < n; i++) {
+        sum_x += x[i];
+        sum_y += y[i];
+        sum_xy += x[i] * y[i];
+        sum_xx += x[i] * x[i];
+      }
+
+      const slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
+      const intercept = (sum_y - slope * sum_x) / n;
+
+      return [slope, intercept];
+    }
+
+    function updatePlot() {
+      const a = parseFloat(document.getElementById('slope').value);
+      const n = parseInt(document.getElementById('points').value);
+      const c = parseFloat(document.getElementById('noise').value);
+
+      const [x, y] = generateData(a, b, n, c);
+      const [estimatedSlope, estimatedIntercept] = linearRegression(x, y);
+
+      const trace1 = {
+        x: x,
+        y: y,
+        mode: 'markers',
+        type: 'scatter',
+        name: 'Lap Times',
+        marker: {color: '#00D2BE', size: 8, opacity: 0.6}
+      };
+
+      const xRange = [-10, 10];
+      const yRange = xRange.map(xi => estimatedSlope * xi + estimatedIntercept);
+
+      const trace2 = {
+        x: xRange,
+        y: yRange,
+        mode: 'lines',
+        type: 'scatter',
+        name: 'Performance Trend',
+        line: {color: '#E10600', width: 3}
+      };
+
+      const layout = {
+        title: 'F1 Performance Analysis',
+        font: {family: 'Titillium Web, sans-serif', color: '#FFFFFF'},
+        plot_bgcolor: '#1F1F27',
+        paper_bgcolor: '#1F1F27',
+        xaxis: {title: 'Race Progress', gridcolor: '#3A3A45'},
+        yaxis: {title: 'Lap Time', gridcolor: '#3A3A45'},
+        legend: {x: 0, y: 1},
+        margin: {l: 50, r: 50, b: 50, t: 80, pad: 4}
+      };
+
+      Plotly.newPlot('plot', [trace1, trace2], layout);
+
+      // Update statistics
+      document.getElementById('trueSlope').textContent = a.toFixed(2);
+      document.getElementById('trueIntercept').textContent = b.toFixed(2);
+      document.getElementById('numPoints').textContent = n;
+      document.getElementById('noiseFactor').textContent = c.toFixed(2);
+      document.getElementById('estimatedSlope').textContent = estimatedSlope.toFixed(2);
+      document.getElementById('estimatedIntercept').textContent = estimatedIntercept.toFixed(2);
+    }
+
+    // Event listeners for sliders
+    document.getElementById('slope').addEventListener('input', function() {
+      document.getElementById('slopeValue').textContent = this.value;
+      updatePlot();
+    });
+
+    document.getElementById('points').addEventListener('input', function() {
+      document.getElementById('pointsValue').textContent = this.value;
+      updatePlot();
+    });
+
+    document.getElementById('noise').addEventListener('input', function() {
+      document.getElementById('noiseValue').textContent = this.value;
+      updatePlot();
+    });
+
+    // Initial plot
+    updatePlot();
+  </script>
+</body>
+</html>
